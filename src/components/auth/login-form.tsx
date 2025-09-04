@@ -26,13 +26,23 @@ export function LoginForm() {
     setLoading(true);
     setError(null);
 
-    const { error: authError } = await signIn(email, password);
-    
-    if (authError) {
-      setError(authError);
+    try {
+      const { error: authError } = await signIn(email, password);
+      
+      if (authError) {
+        setError(authError);
+        setLoading(false);
+      } else {
+        // Success - the auth state change will handle the redirect
+        // Reset loading state after a brief delay to prevent UI flash
+        setTimeout(() => {
+          setLoading(false);
+          router.push(redirectTo);
+        }, 100);
+      }
+    } catch (err) {
+      setError("An unexpected error occurred. Please try again.");
       setLoading(false);
-    } else {
-      router.push(redirectTo);
     }
   };
 
