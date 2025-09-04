@@ -4,7 +4,6 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { trackEvent } from "@/lib/analytics";
-import { logEnvironmentStatus } from "@/lib/env-check";
 
 interface AuthContextType {
   user: User | null;
@@ -26,9 +25,6 @@ export function useAuth() {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  
-  // Check environment configuration
-  const env = logEnvironmentStatus();
   const supabase = createClient();
 
   useEffect(() => {

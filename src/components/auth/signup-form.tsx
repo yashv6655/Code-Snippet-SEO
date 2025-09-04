@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { useAuth } from "@/components/providers/auth-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, Mail, Lock, AlertCircle, CheckCircle } from "lucide-react";
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
 
 export function SignupForm() {
   const [email, setEmail] = useState("");
@@ -15,7 +15,7 @@ export function SignupForm() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   
-  const { signUp } = useAuth();
+  const supabase = createClient();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,13 +34,26 @@ export function SignupForm() {
     setLoading(true);
     setError(null);
 
-    const { error: authError } = await signUp(email, password);
-    
-    if (authError) {
-      setError(authError);
-      setLoading(false);
-    } else {
-      setSuccess(true);
+    try {
+      console.log('Attempting to sign up with:', email);
+      
+      const { error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+      
+      if (authError) {
+        console.error('Sign up error:', authError.message);
+        setError(authError.message);
+        setLoading(false);
+      } else {
+        console.log('Sign up successful');
+        setSuccess(true);
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error('Unexpected error during sign up:', err);
+      setError("An unexpected error occurred. Please try again.");
       setLoading(false);
     }
   };
