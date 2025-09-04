@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Copy, Check, Download, FileText, Code, Globe, X } from "lucide-react";
 import { Snippet } from "@/types/snippet";
+import { trackEvent } from "@/lib/analytics";
 
 interface SnippetDetailModalProps {
   snippet: Snippet;
@@ -14,17 +15,42 @@ interface SnippetDetailModalProps {
 export function SnippetDetailModal({ snippet, isOpen, onClose }: SnippetDetailModalProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
+  const handleClose = () => {
+    trackEvent('snippet_modal_closed', {
+      snippet_id: snippet.id,
+      language: snippet.language || 'unknown'
+    });
+    onClose();
+  };
+
   const copyToClipboard = async (text: string, field: string) => {
     try {
       await navigator.clipboard.writeText(text);
       setCopiedField(field);
       setTimeout(() => setCopiedField(null), 2000);
+      trackEvent('snippet_copy_to_clipboard', {
+        field: field,
+        text_length: text.length,
+        source: 'modal_detail',
+        snippet_id: snippet.id
+      });
     } catch (err) {
       console.error("Failed to copy:", err);
+      trackEvent('snippet_copy_failed', {
+        field: field,
+        error: 'clipboard_write_failed',
+        snippet_id: snippet.id
+      });
     }
   };
 
   const downloadHTML = () => {
+    trackEvent('snippet_download_html', {
+      snippet_id: snippet.id,
+      language: snippet.language || 'unknown',
+      source: 'modal_detail',
+      file_size: snippet.html_output?.length || 0
+    });
     const blob = new Blob([snippet.html_output || ""], { type: "text/html" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -43,6 +69,12 @@ export function SnippetDetailModal({ snippet, isOpen, onClose }: SnippetDetailMo
       explanation: snippet.explanation,
       schema_markup: snippet.schema_markup,
     };
+    trackEvent('snippet_download_json', {
+      snippet_id: snippet.id,
+      language: snippet.language || 'unknown',
+      source: 'modal_detail',
+      file_size: JSON.stringify(jsonData, null, 2).length
+    });
     const blob = new Blob([JSON.stringify(jsonData, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -59,7 +91,7 @@ export function SnippetDetailModal({ snippet, isOpen, onClose }: SnippetDetailMo
   return (
     <div 
       className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[200] flex items-center justify-center p-4"
-      onClick={onClose}
+      onClick={handleClose}
     >
       <div 
         className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] flex flex-col shadow-xl"

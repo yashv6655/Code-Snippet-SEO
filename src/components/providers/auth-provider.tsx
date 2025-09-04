@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { User } from "@supabase/supabase-js";
+import { trackEvent } from "@/lib/analytics";
 
 interface AuthContextType {
   user: User | null;
@@ -42,6 +43,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       async (event, session) => {
         setUser(session?.user ?? null);
         setLoading(false);
+        
+        // Track authentication events
+        if (event === 'SIGNED_IN') {
+          trackEvent('user_signed_in', {
+            user_id: session?.user?.id,
+            provider: session?.user?.app_metadata?.provider || 'email'
+          });
+        } else if (event === 'SIGNED_OUT') {
+          trackEvent('user_signed_out');
+        } else if (event === 'TOKEN_REFRESHED') {
+          trackEvent('user_session_refreshed');
+        }
       }
     );
 
@@ -55,9 +68,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
     
     if (error) {
+      trackEvent('user_sign_in_failed', {
+        error: error.message,
+        email_domain: email.split('@')[1]
+      });
       return { error: error.message };
     }
     
+    // Success event will be tracked by auth state change listener
     return {};
   };
 
@@ -68,8 +86,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
     
     if (error) {
+      trackEvent('user_sign_up_failed', {
+        error: error.message,
+        email_domain: email.split('@')[1]
+      });
       return { error: error.message };
     }
+    
+    trackEvent('user_sign_up_success', {
+      email_domain: email.split('@')[1]
+    });
     
     return {};
   };

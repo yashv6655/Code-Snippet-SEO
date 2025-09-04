@@ -9,6 +9,7 @@ import { Code, FileText, Calendar, Download, Trash2, Plus, Search } from "lucide
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { Snippet } from "@/types/snippet";
+import { trackEvent } from "@/lib/analytics";
 
 export default function DashboardPage() {
   const [snippets, setSnippets] = useState<Snippet[]>([]);
@@ -20,6 +21,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (user) {
+      trackEvent('dashboard_visited');
       fetchSnippets();
     }
   }, [user]);
@@ -44,7 +46,14 @@ export default function DashboardPage() {
   };
 
   const deleteSnippet = async (id: string) => {
+    const snippet = snippets.find(s => s.id === id);
+    
     if (!confirm('Are you sure you want to delete this snippet?')) return;
+
+    trackEvent('snippet_delete_started', {
+      snippet_id: id,
+      language: snippet?.language || 'unknown'
+    });
 
     try {
       const response = await fetch(`/api/snippets/${id}`, {
@@ -53,31 +62,59 @@ export default function DashboardPage() {
 
       if (response.ok) {
         setSnippets(snippets.filter(snippet => snippet.id !== id));
+        trackEvent('snippet_delete_success', {
+          snippet_id: id,
+          language: snippet?.language || 'unknown'
+        });
       } else {
         const data = await response.json();
         setError(data.error || 'Failed to delete snippet');
+        trackEvent('snippet_delete_failed', {
+          snippet_id: id,
+          error: data.error || 'Failed to delete snippet'
+        });
       }
     } catch (err) {
       setError('Failed to delete snippet');
       console.error('Error deleting snippet:', err);
+      trackEvent('snippet_delete_failed', {
+        snippet_id: id,
+        error: 'Network error'
+      });
     }
   };
 
   const downloadHTML = (snippet: Snippet) => {
-    const blob = new Blob([snippet.html_output], { type: "text/html" });
+    trackEvent('snippet_download_html', {
+      snippet_id: snippet.id,
+      language: snippet.language || 'unknown',
+      source: 'dashboard'
+    });
+    
+    const blob = new Blob([snippet.html_output || ""], { type: "text/html" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${snippet.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.html`;
+    a.download = `${snippet.title?.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.html`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
 
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    if (query.length > 0) {
+      trackEvent('dashboard_search', {
+        query_length: query.length,
+        total_snippets: snippets.length
+      });
+    }
+  };
+
   const filteredSnippets = snippets.filter(snippet =>
-    snippet.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    snippet.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    snippet.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    snippet.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     snippet.language?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -132,7 +169,7 @@ export default function DashboardPage() {
               <Input
                 placeholder="Search snippets..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => handleSearch(e.target.value)}
                 className="pl-10"
               />
             </div>
@@ -191,7 +228,7 @@ export default function DashboardPage() {
             <Search className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-foreground mb-2">No results found</h3>
             <p className="text-muted-foreground mb-6">
-              No snippets match "{searchQuery}". Try a different search term.
+              No snippets match &quot;{searchQuery}&quot;. Try a different search term.
             </p>
             <Button variant="outline" onClick={() => setSearchQuery("")}>
               Clear Search
@@ -206,7 +243,14 @@ export default function DashboardPage() {
               <div 
                 key={snippet.id} 
                 className="card-modern p-6 hover:shadow-lg transition-all duration-200 cursor-pointer group"
-                onClick={() => setSelectedSnippet(snippet)}
+                onClick={() => {
+                  setSelectedSnippet(snippet);
+                  trackEvent('snippet_modal_opened', {
+                    snippet_id: snippet.id,
+                    language: snippet.language || 'unknown',
+                    source: 'dashboard_card'
+                  });
+                }}
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-2">
@@ -263,6 +307,11 @@ export default function DashboardPage() {
                     size="sm"
                     onClick={(e) => {
                       e.stopPropagation();
+                      trackEvent('snippet_download_json', {
+                        snippet_id: snippet.id,
+                        language: snippet.language || 'unknown',
+                        source: 'dashboard'
+                      });
                       const jsonData = {
                         title: snippet.title,
                         description: snippet.description,

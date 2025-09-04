@@ -111,8 +111,6 @@ export default function Home() {
                 />
                 <SEOPreview 
                   result={result} 
-                  originalCode={originalCode}
-                  language={selectedLanguage}
                 />
               </div>
             ) : (

@@ -6,12 +6,7 @@ import { Check, ChevronRight, Circle } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
-const DropdownMenu = React.forwardRef<
-  React.ElementRef<typeof DropdownMenuPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Root>
->((props, ref) => (
-  <DropdownMenuPrimitive.Root {...props} modal={false} />
-))
+const DropdownMenu = DropdownMenuPrimitive.Root
 DropdownMenu.displayName = "DropdownMenu"
 
 const DropdownMenuTrigger = React.forwardRef<

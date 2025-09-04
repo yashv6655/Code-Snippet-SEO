@@ -1,6 +1,7 @@
 import { LoginForm } from "@/components/auth/login-form";
 import { Code } from "lucide-react";
 import Link from "next/link";
+import { Suspense } from "react";
 
 export default function LoginPage() {
   return (
@@ -14,7 +15,9 @@ export default function LoginPage() {
           </Link>
         </div>
 
-        <LoginForm />
+        <Suspense fallback={<div>Loading...</div>}>
+          <LoginForm />
+        </Suspense>
 
         {/* Footer */}
         <div className="text-center mt-8">

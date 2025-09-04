@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Save, Check } from "lucide-react";
 import { GenerateResponse } from "@/types/snippet";
 import { useAuth } from "@/components/providers/auth-provider";
+import { trackEvent } from "@/lib/analytics";
 
 interface SaveSnippetButtonProps {
   result: GenerateResponse;
@@ -23,6 +24,14 @@ export function SaveSnippetButton({ result, originalCode, language }: SaveSnippe
 
     setSaving(true);
     setError(null);
+    
+    trackEvent('snippet_save_started', {
+      language: language || 'unknown',
+      title_length: result.title?.length || 0,
+      description_length: result.description?.length || 0,
+      code_length: originalCode.length
+    });
+    
     try {
       const response = await fetch('/api/snippets', {
         method: 'POST',
@@ -43,14 +52,25 @@ export function SaveSnippetButton({ result, originalCode, language }: SaveSnippe
       if (response.ok) {
         setSaved(true);
         setTimeout(() => setSaved(false), 3000);
+        trackEvent('snippet_save_success', {
+          language: language || 'unknown'
+        });
       } else {
         const errorData = await response.json();
         console.error('API error:', errorData);
         setError(errorData.error || 'Failed to save snippet');
+        trackEvent('snippet_save_failed', {
+          error: errorData.error || 'Failed to save snippet',
+          language: language || 'unknown'
+        });
       }
     } catch (error) {
       console.error('Failed to save snippet:', error);
       setError('Network error occurred');
+      trackEvent('snippet_save_failed', {
+        error: 'Network error occurred',
+        language: language || 'unknown'
+      });
     } finally {
       setSaving(false);
     }

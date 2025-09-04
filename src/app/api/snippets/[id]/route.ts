@@ -1,10 +1,11 @@
 import { NextRequest } from "next/server";
 import { requireApiAuth } from "@/lib/auth/api-auth";
 import { createClient } from "@/lib/supabase/server";
+import { User } from "@supabase/supabase-js";
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authResult = await requireApiAuth();
@@ -13,8 +14,9 @@ export async function DELETE(
     }
 
     const supabase = await createClient();
-    const userId = (authResult.user as any).id;
-    const snippetId = params.id;
+    const userId = (authResult.user as User).id;
+    const resolvedParams = await params;
+    const snippetId = resolvedParams.id;
 
     // First check if the snippet exists and belongs to the user
     const { data: snippet, error: fetchError } = await supabase

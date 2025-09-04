@@ -4,14 +4,13 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Copy, Check, Download, FileText, Code, Globe } from "lucide-react";
 import { GenerateResponse } from "@/types/snippet";
+import { trackEvent } from "@/lib/analytics";
 
 interface SEOPreviewProps {
   result: GenerateResponse;
-  originalCode?: string;
-  language?: string;
 }
 
-export function SEOPreview({ result, originalCode, language }: SEOPreviewProps) {
+export function SEOPreview({ result }: SEOPreviewProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
   const copyToClipboard = async (text: string, field: string) => {
@@ -19,12 +18,25 @@ export function SEOPreview({ result, originalCode, language }: SEOPreviewProps) 
       await navigator.clipboard.writeText(text);
       setCopiedField(field);
       setTimeout(() => setCopiedField(null), 2000);
+      trackEvent('snippet_copy_to_clipboard', {
+        field: field,
+        text_length: text.length,
+        source: 'seo_preview'
+      });
     } catch (err) {
       console.error("Failed to copy:", err);
+      trackEvent('snippet_copy_failed', {
+        field: field,
+        error: 'clipboard_write_failed'
+      });
     }
   };
 
   const downloadHTML = () => {
+    trackEvent('snippet_download_html', {
+      source: 'seo_preview',
+      file_size: result.html_output.length
+    });
     const blob = new Blob([result.html_output], { type: "text/html" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -43,6 +55,10 @@ export function SEOPreview({ result, originalCode, language }: SEOPreviewProps) 
       explanation: result.explanation,
       schema_markup: result.schema_markup,
     };
+    trackEvent('snippet_download_json', {
+      source: 'seo_preview',
+      file_size: JSON.stringify(jsonData, null, 2).length
+    });
     const blob = new Blob([JSON.stringify(jsonData, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");

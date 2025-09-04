@@ -1,28 +1,38 @@
 import { NextRequest } from "next/server";
 import { requireApiAuth } from "@/lib/auth/api-auth";
 import { createClient } from "@/lib/supabase/server";
-import { Snippet } from "@/types/snippet";
+import { User } from "@supabase/supabase-js";
 
 // Simple validation function to replace Zod
-function validateSnippetData(body: any) {
+interface SnippetData {
+  code: string;
+  language?: string | null;
+  title: string;
+  description: string;
+  explanation: string;
+  html_output: string;
+  schema_markup: object;
+}
+
+function validateSnippetData(body: Record<string, unknown>): { success: boolean; errors: string[]; data: SnippetData | null } {
   const errors: string[] = [];
   
-  if (!body.code || typeof body.code !== 'string' || body.code.trim().length === 0) {
+  if (!body?.code || typeof body.code !== 'string' || body.code.trim().length === 0) {
     errors.push('Code is required');
   }
-  if (!body.title || typeof body.title !== 'string' || body.title.trim().length === 0) {
+  if (!body?.title || typeof body.title !== 'string' || body.title.trim().length === 0) {
     errors.push('Title is required');
   }
-  if (!body.description || typeof body.description !== 'string' || body.description.trim().length === 0) {
+  if (!body?.description || typeof body.description !== 'string' || body.description.trim().length === 0) {
     errors.push('Description is required');
   }
-  if (!body.explanation || typeof body.explanation !== 'string' || body.explanation.trim().length === 0) {
+  if (!body?.explanation || typeof body.explanation !== 'string' || body.explanation.trim().length === 0) {
     errors.push('Explanation is required');
   }
-  if (!body.html_output || typeof body.html_output !== 'string' || body.html_output.trim().length === 0) {
+  if (!body?.html_output || typeof body.html_output !== 'string' || body.html_output.trim().length === 0) {
     errors.push('HTML output is required');
   }
-  if (!body.schema_markup || typeof body.schema_markup !== 'object') {
+  if (!body?.schema_markup || typeof body.schema_markup !== 'object') {
     errors.push('Schema markup is required');
   }
   
@@ -30,18 +40,18 @@ function validateSnippetData(body: any) {
     success: errors.length === 0,
     errors,
     data: errors.length === 0 ? {
-      code: body.code,
-      language: body.language || null,
-      title: body.title,
-      description: body.description,
-      explanation: body.explanation,
-      html_output: body.html_output,
-      schema_markup: body.schema_markup,
+      code: body.code as string,
+      language: (body.language as string) || null,
+      title: body.title as string,
+      description: body.description as string,
+      explanation: body.explanation as string,
+      html_output: body.html_output as string,
+      schema_markup: body.schema_markup as object,
     } : null
   };
 }
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     const authResult = await requireApiAuth();
     if ('error' in authResult) {
@@ -49,7 +59,7 @@ export async function GET(req: NextRequest) {
     }
 
     const supabase = await createClient();
-    const userId = (authResult.user as any).id;
+    const userId = (authResult.user as User).id;
 
     const { data: snippets, error } = await supabase
       .from('snippets')
@@ -96,7 +106,7 @@ export async function POST(req: NextRequest) {
     }
 
     const supabase = await createClient();
-    const userId = (authResult.user as any).id;
+    const userId = (authResult.user as User).id;
 
     console.log('Attempting to insert snippet for user:', userId);
     console.log('Data to insert:', { user_id: userId, ...validation.data });
