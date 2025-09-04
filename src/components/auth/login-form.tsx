@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useAuth } from "@/components/providers/auth-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, Mail, Lock, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 export function LoginForm() {
   const [email, setEmail] = useState("");
@@ -14,10 +14,10 @@ export function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  const { signIn } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get("redirectTo") || "/dashboard";
+  const redirectTo = searchParams.get("redirectTo") || "/";
+  const supabase = createClient();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,20 +27,25 @@ export function LoginForm() {
     setError(null);
 
     try {
-      const { error: authError } = await signIn(email, password);
+      console.log('Attempting to sign in with:', email);
+      
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
       
       if (authError) {
-        setError(authError);
+        console.error('Sign in error:', authError.message);
+        setError(authError.message);
         setLoading(false);
       } else {
-        // Success - the auth state change will handle the redirect
-        // Reset loading state after a brief delay to prevent UI flash
-        setTimeout(() => {
-          setLoading(false);
-          router.push(redirectTo);
-        }, 100);
+        console.log('Sign in successful, redirecting to:', redirectTo);
+        // Redirect to intended destination
+        router.push(redirectTo);
+        router.refresh();
       }
     } catch (err) {
+      console.error('Unexpected error during sign in:', err);
       setError("An unexpected error occurred. Please try again.");
       setLoading(false);
     }

@@ -9,9 +9,8 @@ import { logEnvironmentStatus } from "@/lib/env-check";
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error?: string }>;
-  signUp: (email: string, password: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -35,18 +34,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Get initial session
     const getInitialSession = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) {
-          console.warn('Error getting initial session:', error.message);
-        }
-        setUser(session?.user ?? null);
-      } catch (error) {
-        console.error('Failed to get initial session:', error);
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
+      const { data: { session } } = await supabase.auth.getSession();
+      setUser(session?.user ?? null);
+      setLoading(false);
     };
 
     getInitialSession();
@@ -79,74 +69,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, [supabase.auth]);
 
-  const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    
-    if (error) {
-      trackEvent('user_sign_in_failed', {
-        error: error.message,
-        email_domain: email.split('@')[1]
-      });
-      return { error: error.message };
-    }
-    
-    // Success event will be tracked by auth state change listener
-    return {};
-  };
-
-  const signUp = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-    
-    if (error) {
-      trackEvent('user_sign_up_failed', {
-        error: error.message,
-        email_domain: email.split('@')[1]
-      });
-      return { error: error.message };
-    }
-    
-    trackEvent('user_sign_up_success', {
-      email_domain: email.split('@')[1]
-    });
-    
-    return {};
+  const refreshUser = async () => {
+    const { data: { user: refreshedUser } } = await supabase.auth.getUser();
+    setUser(refreshedUser ?? null);
   };
 
   const signOut = async () => {
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error('Error signing out:', error.message);
-      }
-      // Force clear local state
-      setUser(null);
-      
-      // Redirect to login page after logout
-      if (typeof window !== 'undefined') {
-        window.location.href = '/auth/login';
-      }
-    } catch (error) {
-      console.error('Failed to sign out:', error);
-      // Force clear state even if logout fails
-      setUser(null);
-      if (typeof window !== 'undefined') {
-        window.location.href = '/auth/login';
-      }
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error('Error signing out:', error.message);
+      throw error;
     }
   };
 
   const value = {
     user,
     loading,
-    signIn,
-    signUp,
     signOut,
+    refreshUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -63,7 +63,8 @@ export async function middleware(request: NextRequest) {
     // Refresh session if expired
     const { data: { user }, error } = await supabase.auth.getUser()
     
-    if (error) {
+    // Only log auth errors that aren't "session missing" (which is normal for logged out users)
+    if (error && !error.message.includes('session missing') && !error.message.includes('Auth session missing')) {
       console.warn('Auth error in middleware:', error.message)
     }
 
@@ -74,6 +75,7 @@ export async function middleware(request: NextRequest) {
 
     // Redirect unauthenticated users away from protected routes
     if (isProtectedPath && !user) {
+      console.log(`Middleware: Redirecting unauthenticated user from ${pathname} to login`)
       const redirectUrl = request.nextUrl.clone()
       redirectUrl.pathname = '/auth/login'
       redirectUrl.searchParams.set('redirectTo', pathname)
@@ -82,10 +84,16 @@ export async function middleware(request: NextRequest) {
 
     // Redirect authenticated users away from auth pages
     if (isAuthPath && user) {
+      console.log(`Middleware: Redirecting authenticated user from ${pathname} to home`)
       const redirectUrl = request.nextUrl.clone()
       redirectUrl.pathname = '/'
       redirectUrl.search = ''
       return NextResponse.redirect(redirectUrl)
+    }
+
+    // Log successful auth checks
+    if (user && isProtectedPath) {
+      console.log(`Middleware: Authenticated user accessing ${pathname}`)
     }
   } catch (error) {
     console.error('Middleware error:', error)

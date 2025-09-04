@@ -34,6 +34,8 @@ export function Header({ showDashboardLink = true }: HeaderProps) {
     setIsLoggingOut(true);
     try {
       await signOut();
+      // Redirect to login after successful logout
+      window.location.href = '/auth/login';
     } catch (error) {
       console.error('Error signing out:', error);
     } finally {
