@@ -142,10 +142,7 @@ export function SEOPreview({ result }: SEOPreviewProps) {
           </div>
           <div className="p-3 bg-muted/50 rounded-lg border">
             <p className="text-sm text-foreground">{result.description}</p>
-            <div className="flex items-center justify-between mt-2">
-              <p className="text-xs text-muted-foreground">
-                {result.description.length}/160 characters
-              </p>
+            <div className="flex items-center justify-end mt-2">
               {result.description.length <= 160 && (
                 <div className="flex items-center gap-1">
                   <div className="w-2 h-2 bg-success rounded-full"></div>

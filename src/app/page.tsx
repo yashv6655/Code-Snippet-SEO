@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { CodeInput } from "@/components/code-input";
+import { CodeWithRepoInput } from "@/components/code-with-repo-input";
 import { SEOPreview } from "@/components/seo-preview";
 import { SaveSnippetButton } from "@/components/save-snippet-button";
 import { Header } from "@/components/header";
 import { GenerateResponse } from "@/types/snippet";
 import { trackEvent } from "@/lib/analytics";
-import { Sparkles, Zap, Target } from "lucide-react";
+import { Sparkles, Zap, Target, GitBranch } from "lucide-react";
 
 export default function Home() {
   const [result, setResult] = useState<GenerateResponse | null>(null);
@@ -15,25 +15,32 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [originalCode, setOriginalCode] = useState<string>("");
   const [selectedLanguage, setSelectedLanguage] = useState<string>("");
+  const [repoUrl, setRepoUrl] = useState<string>("");
 
-  const handleGenerate = async (code: string, language?: string) => {
+  const handleGenerate = async (code: string, githubUrl?: string, language?: string) => {
     setLoading(true);
     setError(null);
     setOriginalCode(code);
     setSelectedLanguage(language || "");
+    setRepoUrl(githubUrl || "");
     
-    trackEvent("snippet_generation_started", { 
+    trackEvent("snippet_with_context_generation_started", { 
       language: language || "auto-detect",
-      code_length: code.length 
+      code_length: code.length,
+      has_repo_context: !!githubUrl
     });
 
     try {
-      const response = await fetch("/api/generate", {
+      const response = await fetch("/api/generate-with-context", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ code, language }),
+        body: JSON.stringify({ 
+          code, 
+          language,
+          githubUrl: githubUrl || null
+        }),
       });
 
       const data = await response.json();
@@ -41,7 +48,8 @@ export default function Home() {
       if (!response.ok) {
         trackEvent("snippet_generation_failed", { 
           error: data.error,
-          language: language || "auto-detect" 
+          language: language || "auto-detect",
+          has_repo_context: !!githubUrl
         });
         throw new Error(data.error || "Failed to generate content");
       }
@@ -50,7 +58,8 @@ export default function Home() {
       trackEvent("snippet_generation_success", { 
         language: language || "auto-detect",
         title_length: data.title?.length || 0,
-        description_length: data.description?.length || 0 
+        description_length: data.description?.length || 0,
+        has_repo_context: !!githubUrl
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
@@ -69,14 +78,14 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-6 py-12">
           <div className="text-center">
             <div className="inline-flex items-center gap-2 bg-primary/5 text-primary px-4 py-2 rounded-full text-sm font-medium mb-4">
-              <Sparkles className="w-4 h-4" />
-              AI-Powered SEO Content Generation
+              <GitBranch className="w-4 h-4" />
+              AI-Powered SEO with Repository Context
             </div>
             <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4 leading-tight">
-              Code Snippet SEO Generator
+              Context-Aware Code SEO Generator
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-              Transform your code examples into search-optimized content that developers actually find
+              Transform your code snippets into SEO-optimized content with full repository context for better developer discoverability
             </p>
           </div>
         </div>
@@ -87,13 +96,13 @@ export default function Home() {
         <div className="grid gap-8 lg:grid-cols-2 lg:gap-12">
           {/* Input Section */}
           <div className="order-1">
-            <CodeInput onGenerate={handleGenerate} loading={loading} />
+            <CodeWithRepoInput onGenerate={handleGenerate} loading={loading} />
             
             {error && (
               <div className="mt-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 bg-destructive rounded-full"></div>
-                  <p className="text-destructive font-medium">Something went wrong</p>
+                  <p className="text-destructive font-medium">Generation Failed</p>
                 </div>
                 <p className="text-destructive/80 text-sm mt-1">{error}</p>
               </div>
@@ -108,6 +117,7 @@ export default function Home() {
                   result={result}
                   originalCode={originalCode}
                   language={selectedLanguage}
+                  repoUrl={repoUrl}
                 />
                 <SEOPreview 
                   result={result} 
@@ -120,20 +130,24 @@ export default function Home() {
                 </div>
                 <h3 className="text-lg font-semibold text-foreground mb-2">Ready to Generate</h3>
                 <p className="text-muted-foreground mb-6">
-                  Enter your code snippet to create SEO-optimized content with structured data
+                  Enter your code snippet and optional repository URL for context-aware SEO content
                 </p>
                 <div className="grid grid-cols-1 gap-3 text-sm">
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <div className="w-1.5 h-1.5 bg-success rounded-full"></div>
-                    SEO-friendly titles & descriptions
+                    Context-aware SEO optimization
                   </div>
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <div className="w-1.5 h-1.5 bg-success rounded-full"></div>
-                    JSON-LD structured data markup
+                    Repository-informed descriptions
                   </div>
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <div className="w-1.5 h-1.5 bg-success rounded-full"></div>
-                    Ready-to-publish HTML output
+                    Structured data with project context
+                  </div>
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <div className="w-1.5 h-1.5 bg-success rounded-full"></div>
+                    Developer-focused content optimization
                   </div>
                 </div>
               </div>
@@ -145,10 +159,10 @@ export default function Home() {
         <div className="mt-20 pt-16 border-t border-border/50">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-foreground mb-4">
-              Why Use Code Snippet SEO Generator?
+              Why Use Context-Aware Code SEO?
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Turn your code examples into traffic-generating SEO assets
+              Create better SEO content by combining your specific code examples with full project context
             </p>
           </div>
           
@@ -157,9 +171,9 @@ export default function Home() {
               <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-4 group-hover:bg-primary/20 transition-colors duration-200">
                 <Zap className="w-6 h-6 text-primary" />
               </div>
-              <h3 className="text-lg font-semibold text-foreground mb-2">Instant SEO Content</h3>
+              <h3 className="text-lg font-semibold text-foreground mb-2">Repository Context</h3>
               <p className="text-muted-foreground leading-relaxed">
-                Generate SEO-optimized titles, descriptions, and structured data in seconds
+                Understands your project structure, dependencies, and purpose for more accurate SEO content
               </p>
             </div>
             
@@ -167,9 +181,9 @@ export default function Home() {
               <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-4 group-hover:bg-primary/20 transition-colors duration-200">
                 <Target className="w-6 h-6 text-primary" />
               </div>
-              <h3 className="text-lg font-semibold text-foreground mb-2">Better Search Rankings</h3>
+              <h3 className="text-lg font-semibold text-foreground mb-2">Focused Code Examples</h3>
               <p className="text-muted-foreground leading-relaxed">
-                Capture &quot;code example&quot; searches with optimized content that developers actually find
+                Highlight specific functions, components, or patterns while maintaining full project context
               </p>
             </div>
             
@@ -177,9 +191,9 @@ export default function Home() {
               <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-4 group-hover:bg-primary/20 transition-colors duration-200">
                 <Sparkles className="w-6 h-6 text-primary" />
               </div>
-              <h3 className="text-lg font-semibold text-foreground mb-2">Developer Focused</h3>
+              <h3 className="text-lg font-semibold text-foreground mb-2">Better Developer Discovery</h3>
               <p className="text-muted-foreground leading-relaxed">
-                Built specifically for developer tool companies and technical content creators
+                Create content that actually helps developers find and understand your specific code solutions
               </p>
             </div>
           </div>
@@ -189,7 +203,7 @@ export default function Home() {
       {/* Footer */}
       <footer className="mt-20 border-t border-border/50 bg-muted/30">
         <div className="max-w-7xl mx-auto px-6 py-8 text-center text-muted-foreground">
-          <p>&copy; 2024 Code Snippet SEO Generator. Built for developers, by developers.</p>
+          <p>&copy; 2024 Context-Aware Code SEO Generator. Built for developers, by developers.</p>
         </div>
       </footer>
     </div>

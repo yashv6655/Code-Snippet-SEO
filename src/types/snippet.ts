@@ -8,6 +8,7 @@ export interface Snippet {
   explanation?: string
   html_output?: string
   schema_markup?: Record<string, unknown>
+  github_url?: string
   created_at: string
   updated_at: string
 }

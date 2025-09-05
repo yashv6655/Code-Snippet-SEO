@@ -11,9 +11,10 @@ interface SaveSnippetButtonProps {
   result: GenerateResponse;
   originalCode: string;
   language: string;
+  repoUrl?: string;
 }
 
-export function SaveSnippetButton({ result, originalCode, language }: SaveSnippetButtonProps) {
+export function SaveSnippetButton({ result, originalCode, language, repoUrl }: SaveSnippetButtonProps) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,7 +30,8 @@ export function SaveSnippetButton({ result, originalCode, language }: SaveSnippe
       language: language || 'unknown',
       title_length: result.title?.length || 0,
       description_length: result.description?.length || 0,
-      code_length: originalCode.length
+      code_length: originalCode.length,
+      has_repo_context: !!repoUrl
     });
     
     try {
@@ -46,6 +48,7 @@ export function SaveSnippetButton({ result, originalCode, language }: SaveSnippe
           explanation: result.explanation,
           html_output: result.html_output,
           schema_markup: result.schema_markup,
+          github_url: repoUrl || null,
         }),
       });
 
