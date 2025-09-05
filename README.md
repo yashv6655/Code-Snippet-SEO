@@ -151,13 +151,3 @@ Generate SEO content from code snippet.
 
   - Developer gets the exact, current, official example they need in 30 seconds
 
-
-
-
-## License
-
-MIT License - Built for the developer community
-
----
-
-**Perfect for Sita's ICP**: Helps developer tool companies capture technical search traffic without expensive content teams.
